@@ -736,7 +736,6 @@ function start() {
         gctx.clearRect(0, 0, gl.width, gl.height);
         gctx.drawImage(cv, 0, 0);
 
-        tm.textContent = `${Math.floor(t * 2) % 2 ? " " : "●"} t ${t.toFixed(2).padStart(5, "0")}s`;
     }
 
     let t = 0, paused = false, last = performance.now();
