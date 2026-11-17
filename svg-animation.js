@@ -2,7 +2,6 @@
 
 // 基本設定
 const SVG_FX = {
-    particleCount: 1000000,
     sampleSize: 512,
     particleSize: 1.0,// 粒子基礎大小
     maxFPS: 30,// 最大 FPS
@@ -98,9 +97,9 @@ const SVG_FX_ASSETS = {
         frames: generateSVGFrames(
             "assets/stitch",
             "stitch",
-            32
+            30
         ),
-        step: 2
+        step: 1
 
     },
 
@@ -204,7 +203,7 @@ const SVG_FX_TIMELINE = [
 
         x: 0.5,
         y: 0.57,
-        scale: 0.78
+        scale: 1.2
     },
 
     {
@@ -218,11 +217,7 @@ const SVG_FX_TIMELINE = [
 
         x: 0.5,
         y: 0.57,
-        scale: 0.78
-    },
-
-    {
-
+        scale: 1.2
     },
 
     {
@@ -234,7 +229,7 @@ const SVG_FX_TIMELINE = [
 
         x: 0.5,
         y: 0.57,
-        scale: 0.78,
+        scale: 1.2,
 
         targets: [
             {
@@ -345,10 +340,11 @@ const SVG_FX_TIMELINE = [
 
         targets: [
             {
-                name: "cat",
+                name: "cat1",
                 x: 0.90,
-                y: 0.80,
-                scale: 0.4
+                y: 0.90,
+                scale: 0.6,
+                flipX: true
             },
 
             {
@@ -373,12 +369,12 @@ const SVG_FX_TIMELINE = [
         duration: 8,
 
         effect: "frame",
-        target: "cat",
+        target: "cat1",
 
         fps: 10,
         x: 0.90,
-        y: 0.80,
-        scale: 0.4
+        y: 0.90,
+        scale: 0.6
     },
 
     {
@@ -395,7 +391,7 @@ const SVG_FX_TIMELINE = [
 
     {
         start: 27.0,
-        duration: 11,
+        duration: 13,
 
         effect: "hold",
         target: "scorpio",
@@ -419,10 +415,11 @@ const SVG_FX_TIMELINE = [
 
         targets: [
             {
-                name: "cat1",
+                name: "cat",
                 x: 0.1,
-                y: 0.78,
-                scale: 0.6
+                y: 0.83,
+                scale: 0.4,
+                flipX: true
             }
         ]
     },
@@ -432,15 +429,16 @@ const SVG_FX_TIMELINE = [
         duration: 0.7,
         effect: "splitMorph",
 
-        from: "cat",
+        from: "cat1",
         x: 0.90,
-        y: 0.80,
-        scale: 0.4,
-        
+        y: 0.90,
+        scale: 0.6,
+
         targets: [
             {
                 name: "stitch2",
-                x: 0.85,y: 0.30,
+                x: 0.85,
+                y: 0.30,
                 scale: 0.7,
                 flipX: true
             }
@@ -452,18 +450,19 @@ const SVG_FX_TIMELINE = [
         duration: 4.3,
 
         effect: "frame",
-        target: "cat1",
+        target: "cat",
 
         fps: 10,
 
         x: 0.1,
-        y: 0.78,
-        scale: 0.6
+        y: 0.83,
+        scale: 0.4,
+        flipX: true
     },
 
     {
         start: 35.7,
-        duration:4.3,
+        duration: 4.3,
 
         effect: "frame",
         target: "stitch2",
@@ -804,117 +803,102 @@ class SVGParticleSystem {
     // SVG 取樣
     async sampleSVG(source, forcedColor = null, forcedBrightness = null, step = 3) {
         const img = await this.loadImage(source);
-        const size = SVG_FX.sampleSize; // 512
+        const size = SVG_FX.sampleSize;
 
         const canvas = document.createElement("canvas");
         canvas.width = size;
         canvas.height = size;
-
-        const ctx = canvas.getContext("2d", {
-            willReadFrequently: true
-        });
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
 
         const fitScale = Math.min(480 / img.width, 480 / img.height);
         const w = img.width * fitScale;
         const h = img.height * fitScale;
-
-        ctx.clearRect(0, 0, size, size);
-        ctx.drawImage(
-            img,
-            (size - w) / 2,
-            (size - h) / 2,
-            w,
-            h
-        );
+        ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
 
         const data = ctx.getImageData(0, 0, size, size).data;
-        const sampled = [];
-        const fixedColor = forcedColor ? hexToRgb(forcedColor) : null;
+        const fixed = forcedColor ? hexToRgb(forcedColor) : null;
+
+        const maxN = Math.ceil(size / step) ** 2;
+        const xs = new Float32Array(maxN);
+        const ys = new Float32Array(maxN);
+        const rgb = new Uint8Array(maxN * 3);
+        let n = 0;
 
         for (let y = 0; y < size; y += step) {
             for (let x = 0; x < size; x += step) {
-                const index = (y * size + x) * 4;
-                const alpha = data[index + 3];
+                const idx = (y * size + x) * 4;
+                if (data[idx + 3] < 100) continue;
 
-                if (alpha < 100) continue;
-
-                sampled.push({
-                    x: (x - size / 2) / size,
-                    y: (y - size / 2) / size,
-                    fixedColor: !!fixedColor,
-                    brightness: forcedBrightness ?? 1.0,
-                    r: fixedColor ? fixedColor.r : data[index],
-                    g: fixedColor ? fixedColor.g : data[index + 1],
-                    b: fixedColor ? fixedColor.b : data[index + 2],
-                    a: 1
-                });
+                xs[n] = (x - size / 2) / size;
+                ys[n] = (y - size / 2) / size;
+                rgb[n * 3] = fixed ? fixed.r : data[idx];
+                rgb[n * 3 + 1] = fixed ? fixed.g : data[idx + 1];
+                rgb[n * 3 + 2] = fixed ? fixed.b : data[idx + 2];
+                n++;
             }
         }
 
-        if (sampled.length === 0) {
-            throw new Error("SVG 沒有可見內容");
-        }
+        if (n === 0) throw new Error("SVG 沒有可見內容");
 
-        return sampled;
+        // slice 會複製成剛好大小，大緩衝區就能被回收
+        return {
+            count: n,
+            x: xs.slice(0, n),
+            y: ys.slice(0, n),
+            rgb: rgb.slice(0, n * 3),
+            brightness: forcedBrightness ?? 1.0,   // 每張共用一個值，不必每粒子存
+            fixedColor: !!fixed
+        };
     }
 
     // 載入所有素材
+    updateLoading(loaded, total) {
+        const pct = total ? Math.round(loaded / total * 100) : 100;
+        const fill = document.getElementById("loadFill");
+        const label = document.getElementById("loadPct");
+        if (fill) fill.style.width = pct + "%";
+        if (label) label.textContent = `${loaded} / ${total}（${pct}%）`;
+    }
+
     async loadAssets() {
+        let total = 0;
+        for (const c of Object.values(SVG_FX_ASSETS)) {
+            total += c.frames ? c.frames.length : c.svg ? 1 : 0;
+        }
+        let loaded = 0;
+        this.updateLoading(0, total);
 
         for (const [name, config] of Object.entries(SVG_FX_ASSETS)) {
-
             this.assets[name] = [];
-
-            const sources = config.frames
-                ? config.frames
-                : config.svg
-                    ? [config.svg]
-                    : [];
+            const sources = config.frames ? config.frames : config.svg ? [config.svg] : [];
 
             for (let i = 0; i < sources.length; i++) {
-
                 try {
-
-                    const particles = await this.sampleSVG(sources[i], config.color, config.brightness, config.step);
-
-                    this.assets[name].push({
-                        particles
-                    });
-
-                } catch (error) {
-
-                    console.error(
-                        `[SVG FX] ${name} 第 ${i} 張載入失敗`,
-                        error
+                    const frame = await this.sampleSVG(
+                        sources[i], config.color, config.brightness, config.step
                     );
-
+                    this.assets[name].push(frame);
+                } catch (error) {
+                    console.error(`[SVG FX] ${name} 第 ${i} 張載入失敗`, error);
                 }
 
-                // 每 4 張讓出一次執行權
-                if (i % 4 === 3) {
+                loaded++;
+                this.updateLoading(loaded, total);
 
-                    await new Promise(resolve => {
-                        setTimeout(resolve, 0);
-                    });
-
-                }
-
+                if (i % 2 === 1) await new Promise(r => setTimeout(r, 0));
             }
-
-            console.log(
-                `[SVG FX] ${name} 已載入 ${this.assets[name].length} 張`
-            );
-
         }
 
-        // 載入不經過粒子系統的圖片
         await this.loadDirectImages();
+
+        for (const ev of SVG_FX_TIMELINE) {
+            if (ev.effect !== "splitMorph") continue;
+            const from = this.getShape(ev.from);
+            if (from) ev._splitTargets = this.createSplitTargets(ev.targets, from.count);
+        }
+
         this.ready = true;
-
-        console.log(
-            "[SVG FX] 素材載入完成"
-        );
-
+        console.log("[SVG FX] 素材載入完成");
     }
 
     // 取得影格
@@ -942,317 +926,182 @@ class SVGParticleSystem {
 
     // 多目標粒子分配
     createSplitTargets(targetConfigs, count) {
-
         const targets = targetConfigs.map(config => {
-
             const frame = this.getShape(config.name);
-
-            if (!frame || !frame.particles?.length) {
+            if (!frame || !frame.count) {
                 console.warn(`[SVG FX] 找不到目標：${config.name}`);
                 return null;
             }
-
             return {
-                name: config.name,
-                particles: frame.particles,
-
-                // 目標在畫面上的位置
+                frame,
                 x: config.x ?? 0.5,
                 y: config.y ?? 0.5,
-
-                // 目標圖案大小
                 scale: config.scale ?? 0.3,
-                flipX: !!config.flipX
+                flip: !!config.flipX
             };
-
         }).filter(Boolean);
 
-        if (targets.length === 0) {
-            return [];
+        if (!targets.length) return null;
+
+        const idx = new Uint8Array(count);
+        const tx = new Float32Array(count);
+        const ty = new Float32Array(count);
+        const rgb = new Uint8Array(count * 3);
+        const br = new Float32Array(count);
+
+        const groupCount = Math.ceil(count / targets.length);
+
+        for (let i = 0; i < count; i++) {
+            const ti = i % targets.length;
+            const t = targets[ti];
+            const groupIndex = Math.floor(i / targets.length);
+            const local = Math.min(
+                Math.floor(groupIndex / groupCount * t.frame.count),
+                t.frame.count - 1
+            );
+
+            idx[i] = ti;
+            tx[i] = t.frame.x[local];
+            ty[i] = t.frame.y[local];
+            rgb[i * 3] = t.frame.rgb[local * 3];
+            rgb[i * 3 + 1] = t.frame.rgb[local * 3 + 1];
+            rgb[i * 3 + 2] = t.frame.rgb[local * 3 + 2];
+            br[i] = t.frame.brightness;
         }
 
-        const total = count;
-        const result = [];
-
-        for (let i = 0; i < total; i++) {
-
-            // 交錯分配原始粒子，避免愛心被切成上下兩半
-            const targetIndex = i % targets.length;
-
-            const target = targets[targetIndex];
-
-            // 每個目標各自取得完整圖案的均勻取樣
-            const groupIndex = Math.floor(
-                i / targets.length
-            );
-
-            const groupCount = Math.ceil(
-                total / targets.length
-            );
-
-            const localIndex = Math.floor(
-                groupIndex / groupCount *
-                target.particles.length
-            );
-
-            const particle = target.particles[
-                Math.min(localIndex, target.particles.length - 1)
-            ];
-
-            result.push({
-
-                targetName: target.name,
-
-                // 目標圖案的原始粒子座標
-                targetX: particle.x,
-                targetY: particle.y,
-
-                targetFlipX: target.flipX,
-
-                // 目標圖案的顏色
-                targetR: particle.r,
-                targetG: particle.g,
-                targetB: particle.b,
-                targetA: particle.a,
-
-                targetBrightness: particle.brightness ?? 1.0,
-
-                // 目標在畫面上的位置與大小
-                targetCenterX: target.x,
-                targetCenterY: target.y,
-                targetScale: target.scale
-
-            });
-
-        }
-
-        return result;
-
+        return {
+            count, idx, x: tx, y: ty, rgb, br,
+            table: targets.map(t => ({ x: t.x, y: t.y, scale: t.scale, flip: t.flip }))
+        };
     }
 
+    _getGrid(n) {
+        if (!this._grid || this._grid.n !== n) {
+            this._grid = {
+                n,
+                a: new Float32Array(n),
+                r: new Float32Array(n),
+                g: new Float32Array(n),
+                b: new Float32Array(n),
+                br: new Float32Array(n),
+                fix: new Uint8Array(n)
+            };
+        }
+        return this._grid;
+    }
 
-
-    // 統一粒子繪製核心
-    drawParticles(particles, event, options = {}) {
-
-        if (!particles) return;
+    drawParticles(frame, event, options = {}) {
+        if (!frame || !frame.count) return;
 
         const ctx = this.ctx;
-
         const centerX = this.width * (event.x ?? 0.5);
         const centerY = this.height * (event.y ?? 0.5);
-
-        const size =
-            Math.min(this.width, this.height) *
-            (event.scale || 1);
+        const minSize = Math.min(this.width, this.height);
+        const size = minSize * (event.scale || 1);
 
         const progress = options.progress ?? 1;
         const mode = options.mode || "normal";
-
-        const fromParticles = options.from || null;
-        const toParticles = options.to || null;
-
+        const from = options.from || null;
+        const to = options.to || null;
         const amount = easeInOut(progress);
 
-        let total = particles.length;
-        // Morph 結束時必須使用完整目標圖案的粒子數量
-        if (mode === "morph" && toParticles) {
-            total = Math.max(fromParticles.length, toParticles.length);
-        }
+        let total = frame.count;
+        if (mode === "morph" && to) total = Math.max(from.count, to.count);
 
-        // 1. 欄數與主程式完全一致（手機 110，電腦 260）
         const cols = window.innerWidth < 768 ? 110 : 260;
         const cw = this.width / cols;
         const ch = cw * (14 / 9);
         const rows = Math.floor(this.height / ch);
 
-        const grid = new Array(rows * cols).fill(null);
+        const G = this._getGrid(rows * cols);
+        G.a.fill(0);
 
-        const ti = Math.floor(
-            (window.getBirthdayTime?.() || 0) * 4
-        );
+        const ti = Math.floor((window.getBirthdayTime?.() || 0) * 4);
+
+        const fx = frame.x, fy = frame.y, frgb = frame.rgb;
+        const baseBr = frame.brightness;
+        const fixed = frame.fixedColor ? 1 : 0;
 
         for (let i = 0; i < total; i++) {
+            const pi = Math.min(i, frame.count - 1);
 
-            const p = particles[Math.min(i, particles.length - 1)];
+            let x = fx[pi], y = fy[pi];
+            let r = frgb[pi * 3], g = frgb[pi * 3 + 1], b = frgb[pi * 3 + 2];
+            let alpha = 1;
+            let brightness = baseBr;
+            let screen = false;
 
-            let x = p.x;
-            let y = p.y;
-
-            let r = p.r;
-            let g = p.g;
-            let b = p.b;
-            let alpha = p.a;
-            let brightness = p.brightness ?? 1.0;
-
-            // 組裝
             if (mode === "assemble") {
-
                 const rnd = ((i * 2654435761) >>> 0) / 4294967296;
                 const delay = rnd * 0.5;
-
-                const localProgress = clamp(
-                    (progress - delay) / (1 - delay),
-                    0,
-                    1
-                );
-
-                const reveal = easeOut(localProgress);
-
-                // 起點：往外偏移一小段，而非縮到中心
+                const lp = clamp((progress - delay) / (1 - delay), 0, 1);
+                const reveal = easeOut(lp);
                 const angle = rnd * 6.2832 * 7;
                 const spread = (1 - reveal) * 0.08;
-
                 x += Math.cos(angle) * spread;
                 y += Math.sin(angle) * spread;
-
-                // alpha 不要從 0 開始，否則還沒出現的粒子等於空洞
                 alpha *= 0.15 + 0.85 * reveal;
-            }
 
-            // 一般 Morph
-            else if (mode === "morph") {
+            } else if (mode === "morph") {
+                const fi = Math.floor(i / total * from.count);
+                const tj = Math.floor(i / total * to.count);
+                x = lerp(from.x[fi], to.x[tj], amount);
+                y = lerp(from.y[fi], to.y[tj], amount);
+                r = lerp(from.rgb[fi * 3], to.rgb[tj * 3], amount);
+                g = lerp(from.rgb[fi * 3 + 1], to.rgb[tj * 3 + 1], amount);
+                b = lerp(from.rgb[fi * 3 + 2], to.rgb[tj * 3 + 2], amount);
+                brightness = lerp(from.brightness, to.brightness, amount);
 
-                const fromIndex = Math.floor(
-                    i / total * fromParticles.length
-                );
-
-                const toIndex = Math.floor(
-                    i / total * toParticles.length
-                );
-
-                const a = fromParticles[fromIndex];
-                const target = toParticles[toIndex];
-
-                if (!a || !target) continue;
-
-                // 位置平滑插值
-                x = lerp(a.x, target.x, amount);
-                y = lerp(a.y, target.y, amount);
-
-                // 顏色平滑插值
-                r = lerp(a.r, target.r, amount);
-                g = lerp(a.g, target.g, amount);
-                b = lerp(a.b, target.b, amount);
-
-                brightness = lerp(
-                    a.brightness ?? 1.0,
-                    target.brightness ?? 1.0,
-                    amount
-                );
-
-                // 透明度維持穩定
-                alpha = lerp(a.a, target.a, amount);
-
-            }
-
-            // 消散
-            else if (mode === "scatter") {
-
+            } else if (mode === "scatter") {
                 const angle = i * 2.399;
                 const distance = progress * 1.1;
-
                 x += Math.cos(angle) * distance;
                 y += Math.sin(angle) * distance;
-
                 alpha *= 1 - progress;
 
-            }
+            } else if (mode === "splitMorph") {
+                const tab = to.table[to.idx[i]];
 
-            // 多目標 Morph
+                const startX = centerX + x * size;
+                const startY = centerY + y * size;
+                const endX = this.width * tab.x +
+                    (tab.flip ? -to.x[i] : to.x[i]) * minSize * tab.scale;
+                const endY = this.height * tab.y + to.y[i] * minSize * tab.scale;
 
-            // 多目標 Morph
-            else if (mode === "splitMorph") {
-
-                const from = fromParticles[i];
-                const to = toParticles[i];
-
-                if (!from || !to) continue;
-
-                // 起點：原始圖案在畫面上的位置
-                const startX =
-                    centerX + from.x * size;
-
-                const startY =
-                    centerY + from.y * size;
-
-                // 終點：目標圖案在畫面上的位置
-                const minSize = Math.min(
-                    this.width,
-                    this.height
-                );
-
-                const endX =
-                    this.width * to.targetCenterX +
-                    (to.targetFlipX ? -to.targetX : to.targetX) *
-                    minSize * to.targetScale;
-
-                const endY =
-                    this.height * to.targetCenterY +
-                    to.targetY * minSize * to.targetScale;
-
-                // 平滑移動
-                const t = easeInOut(progress);
-
+                const t = amount;
                 x = lerp(startX, endX, t);
                 y = lerp(startY, endY, t);
-
-                // 顏色同步轉換
-                r = lerp(from.r, to.targetR, t);
-                g = lerp(from.g, to.targetG, t);
-                b = lerp(from.b, to.targetB, t);
-
-                brightness = lerp(
-                    from.brightness ?? 1.0,
-                    to.targetBrightness,
-                    t
-                );
-
-                alpha = lerp(from.a, to.targetA, t);
-
+                r = lerp(r, to.rgb[i * 3], t);
+                g = lerp(g, to.rgb[i * 3 + 1], t);
+                b = lerp(b, to.rgb[i * 3 + 2], t);
+                brightness = lerp(baseBr, to.br[i], t);
+                screen = true;
             }
-
 
             if (alpha <= 0.01) continue;
 
-            // splitMorph 已經是畫面座標，不再重複投影
-            let px;
-            let py;
-
-            if (mode === "splitMorph") {
-
-                px = x;
-                py = y;
-
+            let px, py;
+            if (screen) {
+                px = x; py = y;
             } else {
-
-                const directionX = event.flipX ? -x : x;
-                px = centerX + directionX * size;
+                px = centerX + (event.flipX ? -x : x) * size;
                 py = centerY + y * size;
-
             }
 
             const col = Math.floor(px / cw);
             const row = Math.floor(py / ch);
-
-            if (
-                col < 0 || col >= cols ||
-                row < 0 || row >= rows
-            ) continue;
+            if (col < 0 || col >= cols || row < 0 || row >= rows) continue;
 
             const id = row * cols + col;
-
-            if (!grid[id] || alpha > grid[id].alpha) {
-
-                grid[id] = {
-                    r, g, b, alpha, brightness, fixedColor: p.fixedColor
-                };
-
+            if (alpha > G.a[id]) {
+                G.a[id] = alpha;
+                G.r[id] = r; G.g[id] = g; G.b[id] = b;
+                G.br[id] = brightness;
+                G.fix[id] = fixed;
             }
-
         }
 
-        // ASCII 字元渲染（完全對齊 script.js 史迪奇演算法）
+        // ASCII 字元渲染
         ctx.save();
         ctx.font = `${Math.round(ch * 0.98)}px ui-monospace,Menlo,Consolas,"DejaVu Sans Mono",monospace`;
         ctx.textAlign = "center";
@@ -1261,29 +1110,19 @@ class SVGParticleSystem {
         for (let row = 0; row < rows; row++) {
             for (let col = 0; col < cols; col++) {
                 const id = row * cols + col;
-                const p = grid[id];
-                if (!p) continue;
+                const a = G.a[id];
+                if (a <= 0) continue;
 
-                let gx = 0;
-                let gy = 0;
-                let edge = false;
-                let filled = 0; // 8 鄰域中有粒子的數量
+                let gx = 0, gy = 0, edge = false, filled = 0;
 
                 for (let dy = -1; dy <= 1; dy++) {
                     for (let dx = -1; dx <= 1; dx++) {
                         if (!dx && !dy) continue;
-                        const yy = row + dy;
-                        const xx = col + dx;
-                        const out =
-                            yy < 0 ||
-                            yy >= rows ||
-                            xx < 0 ||
-                            xx >= cols ||
-                            !grid[yy * cols + xx];
-
+                        const yy = row + dy, xx = col + dx;
+                        const out = yy < 0 || yy >= rows || xx < 0 || xx >= cols ||
+                            G.a[yy * cols + xx] <= 0;
                         if (out) {
-                            gx += dx;
-                            gy += dy;
+                            gx += dx; gy += dy;
                             if (!dx || !dy) edge = true;
                         } else {
                             filled++;
@@ -1292,132 +1131,57 @@ class SVGParticleSystem {
                 }
 
                 const hh = (row * 7919 + col * 104729) % 9973;
-                let char;
-                let lum;
-
-                let thin = false;
+                const isFixed = G.fix[id] === 1;
+                let char, lum, thin = false;
 
                 if (edge) {
                     char = SVG_ASCII.outline(gx, gy);
-
-                    // 鄰居越少 = 線條越細 → 亮度越接近 1.0
-                    // 鄰居滿 8 個（粗圖形邊緣）→ 維持 0.5
-                    const thickness = filled / 8;
                     thin = filled <= 4;
-                    lum = p.fixedColor ? 1.0 : lerp(1.0, 0.5, thickness);
+                    lum = isFixed ? 1.0 : lerp(1.0, 0.5, filled / 8);
                 } else {
                     lum = 1.0;
-                    const lv = 3;
-                    const pool = SVG_ASCII.pools[lv];
+                    const pool = SVG_ASCII.pools[3];
                     char = pool[((hh + ti + (hh % 11)) % 12) % pool.length];
                 }
 
-                let finalLum =
-                    lum *
-                    SVG_FX_STYLE.globalBrightness *
-                    p.brightness *
-                    clamp(p.alpha, 0, 1);
+                const ca = clamp(a, 0, 1);
+                let finalLum = lum * SVG_FX_STYLE.globalBrightness * G.br[id] * ca;
+                if (thin) finalLum = Math.max(finalLum, SVG_FX_STYLE.thinEdgeMinLum * ca);
 
-                // 細線條不讓亮度低於下限（略過素材本身的低 brightness，例如 scorpio 的 0.5）
-                if (thin) {
-                    finalLum = Math.max(finalLum, SVG_FX_STYLE.thinEdgeMinLum * clamp(p.alpha, 0, 1));
-                }
-
-                ctx.globalAlpha = 1;
-                ctx.fillStyle = `rgb(${(p.r * finalLum) | 0},${(p.g * finalLum) | 0},${(p.b * finalLum) | 0})`;
-                ctx.fillText(
-                    char,
-                    col * cw + cw / 2,
-                    row * ch + ch / 2
-                );
+                ctx.fillStyle =
+                    `rgb(${(G.r[id] * finalLum) | 0},${(G.g[id] * finalLum) | 0},${(G.b[id] * finalLum) | 0})`;
+                ctx.fillText(char, col * cw + cw / 2, row * ch + ch / 2);
             }
         }
 
         ctx.restore();
-
     }
 
-
     // 動畫效果
-
     // 組裝
     drawAssemble(frame, event, progress) {
-
         if (!frame) return;
-
-        this.drawParticles(
-            frame.particles,
-            event,
-            {
-                progress,
-                mode: "assemble"
-            }
-        );
-
+        this.drawParticles(frame, event, { progress, mode: "assemble" });
     }
 
     // 逐格動畫
     drawFrame(frame, event) {
-
         if (!frame) return;
-
-        this.drawParticles(
-            frame.particles,
-            event,
-            {
-                mode: "normal"
-            }
-        );
-
+        this.drawParticles(frame, event, { mode: "normal" });
     }
 
     // 變形
     drawMorph(fromFrame, toFrame, event, progress) {
-
         if (!fromFrame || !toFrame) return;
-
-        this.drawParticles(
-            fromFrame.particles,
-            event,
-            {
-                progress,
-                mode: "morph",
-                from: fromFrame.particles,
-                to: toFrame.particles
-            }
-        );
-
+        this.drawParticles(fromFrame, event, {
+            progress, mode: "morph", from: fromFrame, to: toFrame
+        });
     }
 
     // 消散
     drawDissolve(fromFrame, toFrame, event, progress) {
-
-        if (fromFrame) {
-
-            this.drawParticles(
-                fromFrame.particles,
-                event,
-                {
-                    progress,
-                    mode: "scatter"
-                }
-            );
-
-        }
-
-        if (toFrame) {
-
-            this.drawParticles(
-                toFrame.particles,
-                event,
-                {
-                    progress,
-                    mode: "assemble"
-                }
-            );
-
-        }
-
+        if (fromFrame) this.drawParticles(fromFrame, event, { progress, mode: "scatter" });
+        if (toFrame) this.drawParticles(toFrame, event, { progress, mode: "assemble" });
     }
 
     // 執行事件
@@ -1504,40 +1268,19 @@ class SVGParticleSystem {
             );
 
         } else if (event.effect === "splitMorph") {
-
-            // 取得起始圖案
             const fromFrame = this.getShape(event.from);
+            if (!fromFrame || !fromFrame.count) return;
 
-            if (!fromFrame || !fromFrame.particles.length) {
-                return;
+            if (event._splitTargets === undefined) {
+                event._splitTargets = this.createSplitTargets(event.targets, fromFrame.count);
             }
+            if (!event._splitTargets) return;
 
-            // 快取目標粒子，避免每一幀重新分配
-            if (!event._splitTargets) {
-                event._splitTargets = this.createSplitTargets(
-                    event.targets,
-                    fromFrame.particles.length
-                );
-            }
-
-            const targets = event._splitTargets;
-
-            if (!targets.length) {
-                return;
-            }
-
-            this.drawParticles(
-                fromFrame.particles,
-                event,
-                {
-                    mode: "splitMorph",
-                    progress,
-
-                    from: fromFrame.particles,
-                    to: targets
-                }
-            );
-
+            this.drawParticles(fromFrame, event, {
+                mode: "splitMorph",
+                progress,
+                to: event._splitTargets
+            });
         }
 
     }
@@ -1613,48 +1356,30 @@ class SVGParticleSystem {
 window.SVGParticleSystem = SVGParticleSystem;
 
 async function initSVGFX() {
-
     const canvas = document.getElementById("svgFx");
-
     if (!canvas) {
-
-        console.warn(
-            "[SVG FX] 找不到 svgFx canvas"
-        );
-
+        console.warn("[SVG FX] 找不到 svgFx canvas");
+        window.__resolveSvgFx?.();
         return;
-
     }
 
     try {
-
-        const system = new window.SVGParticleSystem(
-            canvas
-        );
-
+        const system = new window.SVGParticleSystem(canvas);
         window.svgFx = system;
-
         await system.loadAssets();
-
-        const time = window.getBirthdayTime
-            ? window.getBirthdayTime()
-            : 0;
-
-        system.renderAt(time);
-
-        console.log(
-            "[SVG FX] 統一粒子繪製版本初始化完成"
-        );
-
+        system.renderAt(0);
     } catch (error) {
-
-        console.error(
-            "[SVG FX] 初始化失敗",
-            error
-        );
-
+        console.error("[SVG FX] 初始化失敗", error);
+    } finally {
+        const el = document.getElementById("loading");
+        if (el) {
+            el.classList.add("done");
+            setTimeout(() => el.remove(), 700);
+        }
+        window.__resolveSvgFx?.();   // 無論成功失敗都要放行，否則會永遠卡在載入畫面
     }
-
 }
+
+initSVGFX();
 
 initSVGFX();

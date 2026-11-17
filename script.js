@@ -1,3 +1,6 @@
+window.svgFxReady = new Promise(resolve => {
+    window.__resolveSvgFx = resolve;
+});
 // 設定區
 const CFG = {
     loop: 40, // 長度（s）
@@ -14,9 +17,9 @@ const CFG = {
         { text: "又長大一歲了！", at: 20, row: 0.38, color: [28] },
         // 結尾生日祝福(30s~35s)
         { text: "生日快樂！", at: 27, row: 0.25, color: [28] },
-        { text: "祝妳新的一歲每天都開心", at: 28, row: 0.37, color: [14] },
-        { text: "少一點煩惱", at: 29, row: 0.49, color: [28] },
-        { text: "課業和想做的事情都能順順利利", at: 30, row: 0.61, color: [14] },
+        { text: "祝妳新的一歲每天都開心", at: 28, row: 0.39, color: [14] },
+        { text: "少一點煩惱", at: 29, row: 0.51, color: [28] },
+        { text: "課業和想做的事情都能順順利利", at: 30, row: 0.63, color: [14] },
         //(到結束)
         { text: "HAPPY", at: 35, row: 0.40, color: [14, 16], size: 1.5 },
         { text: "BIRTHDAY", at: 36, row: 0.64, color: [14, 16], size: 1.5 },
@@ -622,7 +625,7 @@ function start() {
 
             if (wd.at < 15 && t > 19) continue;
 
-            if (wd.at < 21 && t >= 23.5) continue;
+            if (wd.at < 21 && t >= 23) continue;
 
             if (wd.at <= 30 && t >= 35) continue;
 
@@ -768,9 +771,15 @@ function start() {
     });
 
     resize();
-    requestAnimationFrame(loop);
+    window.svgFxReady.then(() => {
+        last = performance.now();
+        requestAnimationFrame(loop);
+    });
 }
 
-start().catch(error => {
+try {
+    start();
+} catch (error) {
     console.error("生日動畫初始化失敗：", error);
-});
+    window.__resolveSvgFx?.();
+}

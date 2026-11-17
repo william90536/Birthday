@@ -4,7 +4,7 @@ import base64
 from PIL import Image
 from rembg import remove, new_session
 
-INPUT_GIF = "cat.gif"
+INPUT_GIF = "stitch.gif"
 SKIP_BACKGROUND_REMOVAL = False
 OUTPUT_DIR = "output"
 name = os.path.splitext(os.path.basename(INPUT_GIF))[0]

@@ -4,7 +4,7 @@
   padding-bottom: env(safe-area-inset-bottom, 0px);
   --bg: #000;
   --fg: #78707f;
-  --pk: #ff7ab6;
+  --pk: #7a9dff;
 }
 
 html, body {
@@ -12,7 +12,6 @@ html, body {
   margin: 0;
   background: var(--bg);
   overflow: hidden;
-  /* 防止手機上長按選取文字或拖曳畫面 */
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
@@ -29,11 +28,8 @@ html, body {
   overflow: hidden;
 }
 
-/* ============================================================
-   CANVAS LAYERS
-   ============================================================ */
-
-/* 第一層：主程式 */
+/* CANVAS LAYERS */
+/* 第一層(主程式) */
 #c {
   position: absolute;
   inset: 0;
@@ -42,7 +38,7 @@ html, body {
   z-index: 1;
 }
 
-/* 第二層：光暈 */
+/* 第二層(光暈) */
 #glow {
   position: absolute;
   inset: 0;
@@ -55,7 +51,7 @@ html, body {
   pointer-events: none;
 }
 
-/* 第三層：SVG 動畫引擎 */
+/* 第三層(SVG 動畫引擎) */
 #svgFx {
   position: absolute;
   inset: 0;
@@ -98,3 +94,33 @@ html, body {
     top: 8px;
   }
 }
+
+#loading {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+  background: #000;
+  color: var(--pk);
+  font: 14px ui-monospace, Menlo, Consolas, monospace;
+  transition: opacity .6s;
+}
+#loading.done { opacity: 0; pointer-events: none; }
+#loadBar {
+  width: min(70vw, 360px);
+  height: 4px;
+  background: rgba(255,255,255,.15);
+  border-radius: 2px;
+  overflow: hidden;
+}
+#loadFill {
+  width: 0%;
+  height: 100%;
+  background: var(--pk);
+  transition: width .15s;
+}
+#loadPct { font-size: 12px; color: var(--fg); }
