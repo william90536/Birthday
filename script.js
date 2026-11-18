@@ -56,9 +56,7 @@ const COLORS = [
     [255, 120, 200], // 28: 粉紅桃紅
 ];
 
-// 新增圖案：在這個陣列加物件即可
-// gen(rnd) 回傳圖案「表面上的一個點」[x,y,z]（相對於 pos）
-// rnd() 是 0~1 亂數；n 是點數，color 是顏色編號或 [r,g,b]
+// rnd(): 0~1 亂數, n: 點數，color: 顏色編號或 [r,g,b]
 // 座標：x 右、y 上、z 朝向鏡頭；蛋糕中心在 x=1
 const SHAPES = [
     { // 愛心
@@ -138,8 +136,7 @@ const right = nrm(cross(fwd, [0, 1, 0]));
 const up = cross(right, fwd);
 const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 const view = fwd.map(a => -a);
-// 焦距越小，畫面中的物件越小
-const F = isDesktop ? 2.5 : 2.9; // 動態調整焦距 F（數越大物體越小，數越小物體越大）
+const F = isDesktop ? 2.5 : 2.9; // 動態調整焦距 F（越大物體越小）
 
 // 蛋糕（中心 x=1）
 const CX = 1; // 中心 x
@@ -293,7 +290,7 @@ function start() {
         const w = innerWidth, h = innerHeight;
 
         const isMobile = w < 768;
-        cols = isMobile ? 110 : 260; // 電腦保持 240 欄以維持精細度與適當大小
+        cols = isMobile ? 240 : 280;
         cw = w / cols;
         ch = cw * (CH0 / CW0);
         rows = Math.floor(h / ch);
@@ -620,6 +617,8 @@ function start() {
             }
         }
 
+        const isMobile = innerWidth < 768;
+        const normalWdSize = isMobile ? 1.8 : 1;
         for (const wd of CFG.words) {
             if (wd.at < 10 && t >= 12) continue;
 
@@ -636,7 +635,7 @@ function start() {
 
             const cov = cover(
                 wd.text,
-                (1.55 - 0.55 * pop(p)) * (wd.size ?? 1),
+                (1.55 - 0.55 * pop(p)) * (wd.size ?? 1) * normalWdSize,
                 rows * wd.row
             );
             const g = (r, q) => (r < 0 || r >= rows || q < 0 || q >= cols) ? 0 : cov[r * cols + q];
